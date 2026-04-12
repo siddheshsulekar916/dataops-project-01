@@ -25,3 +25,33 @@ resource "aws_iam_role" "glue_role" {
     }]
   })
 }
+
+resource "aws_glue_catalog_table" "security_logs_table" {
+  name          = "processed_logs"
+  database_name = aws_glue_catalog_database.security_db.name
+
+  table_type = "EXTERNAL_TABLE"
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.data_lake.bucket}/bronze/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.serde2.OpenCSVSerde"
+    }
+
+    columns {
+      name = "log_id"
+      type = "int"
+    }
+    columns {
+      name = "timestamp"
+      type = "string"
+    }
+    columns {
+      name = "threat_level"
+      type = "string"
+    }
+  }
+}
