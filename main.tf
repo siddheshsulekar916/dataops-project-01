@@ -105,3 +105,31 @@ resource "aws_glue_job" "parquet_transformation" {
     "--job-language" = "python"
   }
 }
+resource "aws_glue_catalog_table" "silver_logs_table" {
+  name          = "silver_logs"
+  database_name = aws_glue_catalog_database.security_db.name
+  table_type    = "EXTERNAL_TABLE"
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.data_lake.bucket}/silver/"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+    }
+
+    columns {
+      name = "log_id"
+      type = "int"
+    }
+    columns {
+      name = "timestamp"
+      type = "string"
+    }
+    columns {
+      name = "threat_level"
+      type = "string"
+    }
+  }
+}
