@@ -1,4 +1,5 @@
-log_id,timestamp,event
-1,2026-04-12 10:00:00,Login_Success
-2,2026-04-12 10:05:00,File_Upload
-3,2026-04-12 10:10:00,Unauthorized_Access
+log_id,timestamp,threat_level,source_ip
+101,2026-04-12 10:00:00,Low,192.168.1.1
+102,2026-04-12 10:05:00,High,10.0.0.5
+,2026-04-12 10:10:00,Medium,172.16.0.1
+104,Invalid-Date,Critical,192.168.1.50
