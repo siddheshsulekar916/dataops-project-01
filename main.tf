@@ -50,9 +50,19 @@ resource "aws_glue_catalog_table" "security_logs_table" {
       }
     }
 
-    columns { name = "log_id"       type = "int"    }
-    columns { name = "timestamp"    type = "string" }
-    columns { name = "threat_level" type = "string" }
+    # Fixed syntax: Multi-line blocks for columns
+    columns {
+      name = "log_id"
+      type = "int"
+    }
+    columns {
+      name = "timestamp"
+      type = "string"
+    }
+    columns {
+      name = "threat_level"
+      type = "string"
+    }
   }
 }
 
