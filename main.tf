@@ -55,3 +55,10 @@ resource "aws_glue_catalog_table" "security_logs_table" {
     }
   }
 }
+
+# This creates the folder automatically in S3
+resource "aws_s3_object" "results_folder" {
+  bucket = aws_s3_bucket.data_lake.id
+  key    = "athena-results/"
+  content_type = "application/x-directory"
+}
