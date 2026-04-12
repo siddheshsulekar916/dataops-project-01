@@ -8,7 +8,7 @@ resource "aws_s3_bucket" "data_lake" {
   bucket = "siddhesh-dataops-lake-2026-v1"
 }
 
-# 3. Folder Architecture (Bronze, Silver, Scripts)
+# 3. Folder Architecture
 resource "aws_s3_object" "bronze_folder" {
   bucket       = aws_s3_bucket.data_lake.id
   key          = "bronze/"
@@ -27,7 +27,7 @@ resource "aws_s3_object" "scripts_folder" {
   content_type = "application/x-directory"
 }
 
-# 4. Database & Table (Bronze Layer)
+# 4. Database & Bronze Table (Manual)
 resource "aws_glue_catalog_database" "security_db" {
   name = "security_logs_db"
 }
@@ -50,24 +50,13 @@ resource "aws_glue_catalog_table" "security_logs_table" {
       }
     }
 
-    columns {
-      name = "log_id"
-      type = "int"
-    }
-
-    columns {
-      name = "timestamp"
-      type = "string"
-    }
-
-    columns {
-      name = "threat_level"
-      type = "string"
-    }
+    columns { name = "log_id"       type = "int"    }
+    columns { name = "timestamp"    type = "string" }
+    columns { name = "threat_level" type = "string" }
   }
 }
 
-# 5. IAM Permissions (The "Security" in DataOps)
+# 5. IAM Permissions
 resource "aws_iam_role" "glue_role" {
   name = "DataOpsGlueRole"
 
@@ -91,7 +80,7 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
-# 6. The ETL Job (The Worker)
+# 6. The ETL Job (Bronze -> Silver)
 resource "aws_glue_job" "parquet_transformation" {
   name     = "siddhesh-parquet-transform"
   role_arn = aws_iam_role.glue_role.arn
@@ -105,31 +94,14 @@ resource "aws_glue_job" "parquet_transformation" {
     "--job-language" = "python"
   }
 }
-resource "aws_glue_catalog_table" "silver_logs_table" {
-  name          = "silver_logs"
+
+# 7. THE CRAWLER (Replaces the silver_logs_table)
+resource "aws_glue_crawler" "silver_crawler" {
   database_name = aws_glue_catalog_database.security_db.name
-  table_type    = "EXTERNAL_TABLE"
+  name          = "siddhesh-silver-crawler"
+  role          = aws_iam_role.glue_role.arn
 
-  storage_descriptor {
-    location      = "s3://${aws_s3_bucket.data_lake.bucket}/silver/"
-    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
-
-    ser_de_info {
-      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
-    }
-
-    columns {
-      name = "log_id"
-      type = "int"
-    }
-    columns {
-      name = "timestamp"
-      type = "string"
-    }
-    columns {
-      name = "threat_level"
-      type = "string"
-    }
+  s3_target {
+    path = "s3://${aws_s3_bucket.data_lake.bucket}/silver/"
   }
 }
