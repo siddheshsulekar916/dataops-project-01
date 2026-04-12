@@ -34,3 +34,7 @@ jobs:
         run: |
           terraform init
           terraform apply -auto-approve
+
+      - name: Upload ETL Script to S3
+        run: |
+          aws s3 cp transform_to_parquet.py s3://siddhesh-dataops-lake-2026-v1/scripts/

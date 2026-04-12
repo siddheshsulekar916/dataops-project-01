@@ -54,3 +54,10 @@ resource "aws_glue_catalog_table" "security_logs_table" {
     }
   }
 }
+
+# Create the 'silver' folder for optimized Parquet data
+resource "aws_s3_object" "silver_folder" {
+  bucket = aws_s3_bucket.data_lake.id
+  key    = "silver/"
+  content_type = "application/x-directory"
+}
