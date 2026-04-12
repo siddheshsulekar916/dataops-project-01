@@ -14,7 +14,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install Dependencies
-        run: pip install pandas
+        run: pip install pandas requests 
 
       - name: Run Data Quality Check
         run: python validate.py # This is your gatekeeper!
