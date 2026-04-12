@@ -1,0 +1,36 @@
+name: DataOps-Main-Pipeline
+on: [push] # The trigger: Runs every time you push code
+
+jobs:
+  Quality-Gate-and-Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: pip install pandas
+
+      - name: Run Data Quality Check
+        run: python validate.py # This is your gatekeeper!
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Setup
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Deploy
+        if: success() # Only runs if the Quality Check above passed
+        run: |
+          terraform init
+          terraform apply -auto-approve
