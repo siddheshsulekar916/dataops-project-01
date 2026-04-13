@@ -177,3 +177,58 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 
   depends_on = [aws_lambda_permission.allow_s3]
 }
+
+# --- PHASE 9: MONITORING & ALERTING ---
+
+# 12. SNS Topic (The Notification Hub)
+resource "aws_sns_topic" "glue_notifications" {
+  name = "siddhesh-glue-job-alerts"
+}
+
+# 13. SNS Subscription (Your Email)
+resource "aws_sns_topic_subscription" "email_alert" {
+  topic_arn = aws_sns_topic.glue_notifications.arn
+  protocol  = "email"
+  endpoint  = "siddheshsulekar4@gmail.com" # <--- CHANGE THIS TO YOUR EMAIL
+}
+
+# 14. CloudWatch Event Rule (The Guard)
+resource "aws_cloudwatch_event_rule" "glue_job_event" {
+  name        = "siddhesh-glue-event-rule"
+  description = "Watch for Glue Job state changes"
+
+  event_pattern = jsonencode({
+    source      = ["aws.glue"]
+    detail_type = ["Glue Job State Change"]
+    detail = {
+      jobName = [aws_glue_job.parquet_transformation.name]
+      state   = ["SUCCEEDED", "FAILED", "STOPPED"]
+    }
+  })
+}
+
+# 15. CloudWatch Target (Connect Guard to Post Office)
+resource "aws_cloudwatch_event_target" "sns_target" {
+  rule      = aws_cloudwatch_event_rule.glue_job_event.name
+  target_id = "SendToSNS"
+  arn       = aws_sns_topic.glue_notifications.arn
+}
+
+# 16. SNS Topic Policy (Allow CloudWatch to publish to SNS)
+resource "aws_sns_topic_policy" "default" {
+  arn = aws_sns_topic.glue_notifications.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.glue_notifications.arn
+      }
+    ]
+  })
+}
