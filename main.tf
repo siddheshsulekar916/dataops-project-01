@@ -1,3 +1,12 @@
+terraform {
+  backend "s3" {
+    bucket         = "siddhesh-terraform-state-storage-2026"
+    key            = "dataops-pipeline/terraform.tfstate"
+    region         = "ap-south-1"
+    encrypt        = true
+  }
+}
+
 # 1. Define the Provider
 provider "aws" {
   region = "us-east-1"
