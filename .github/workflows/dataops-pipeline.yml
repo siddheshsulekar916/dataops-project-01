@@ -32,8 +32,9 @@ jobs:
       - name: Terraform Deploy
         if: success() # Only runs if the Quality Check above passed
         run: |
-          terraform init
-          terraform apply -auto-approve
+          # The -migrate-state flag tells the robot to move to S3 without asking questions
+          terraform init -input=false -migrate-state 
+          terraform apply -auto-approve -input=false
 
       - name: Upload ETL Script to S3
         run: |
