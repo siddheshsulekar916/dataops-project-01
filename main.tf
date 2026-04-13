@@ -1,6 +1,6 @@
 # 1. Define the Provider
 provider "aws" {
-  region = "us-east-1" 
+  region = "us-east-1"
 }
 
 # 2. The Data Lake
@@ -50,9 +50,21 @@ resource "aws_glue_catalog_table" "security_logs_table" {
       }
     }
 
-    columns { name = "log_id"       type = "int"    }
-    columns { name = "timestamp"    type = "string" }
-    columns { name = "threat_level" type = "string" }
+    # ✅ CORRECT: Each property on its own line
+    columns {
+      name = "log_id"
+      type = "int"
+    }
+
+    columns {
+      name = "timestamp"
+      type = "string"
+    }
+
+    columns {
+      name = "threat_level"
+      type = "string"
+    }
   }
 }
 
@@ -63,8 +75,8 @@ resource "aws_iam_role" "glue_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "glue.amazonaws.com" }
     }]
   })
@@ -115,8 +127,8 @@ resource "aws_iam_role" "lambda_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
