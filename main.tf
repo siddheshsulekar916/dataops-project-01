@@ -27,7 +27,7 @@ resource "aws_s3_object" "scripts_folder" {
   content_type = "application/x-directory"
 }
 
-# 4. Database & Bronze Table (Manual)
+# 4. Database & Bronze Table
 resource "aws_glue_catalog_database" "security_db" {
   name = "security_logs_db"
 }
@@ -50,23 +50,13 @@ resource "aws_glue_catalog_table" "security_logs_table" {
       }
     }
 
-    # Fixed syntax: Multi-line blocks for columns
-    columns {
-      name = "log_id"
-      type = "int"
-    }
-    columns {
-      name = "timestamp"
-      type = "string"
-    }
-    columns {
-      name = "threat_level"
-      type = "string"
-    }
+    columns { name = "log_id"       type = "int"    }
+    columns { name = "timestamp"    type = "string" }
+    columns { name = "threat_level" type = "string" }
   }
 }
 
-# 5. IAM Permissions
+# 5. IAM Permissions for Glue
 resource "aws_iam_role" "glue_role" {
   name = "DataOpsGlueRole"
 
@@ -90,7 +80,7 @@ resource "aws_iam_role_policy_attachment" "glue_service" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
-# 6. The ETL Job (Bronze -> Silver)
+# 6. The ETL Job
 resource "aws_glue_job" "parquet_transformation" {
   name     = "siddhesh-parquet-transform"
   role_arn = aws_iam_role.glue_role.arn
@@ -105,7 +95,7 @@ resource "aws_glue_job" "parquet_transformation" {
   }
 }
 
-# 7. THE CRAWLER (Replaces the silver_logs_table)
+# 7. The Crawler
 resource "aws_glue_crawler" "silver_crawler" {
   database_name = aws_glue_catalog_database.security_db.name
   name          = "siddhesh-silver-crawler"
@@ -114,4 +104,64 @@ resource "aws_glue_crawler" "silver_crawler" {
   s3_target {
     path = "s3://${aws_s3_bucket.data_lake.bucket}/silver/"
   }
+}
+
+# --- NEW FOR TODAY: AUTOMATION LAYER ---
+
+# 8. Lambda Role & Permissions
+resource "aws_iam_role" "lambda_role" {
+  name = "DataOpsLambdaTriggerRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_glue_access" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+# 9. Packaging and Creating the Lambda Function
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "trigger_glue_job.py"
+  output_path = "lambda_function.zip"
+}
+
+resource "aws_lambda_function" "s3_trigger_lambda" {
+  filename         = "lambda_function.zip"
+  function_name    = "siddhesh-s3-glue-trigger"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "trigger_glue_job.lambda_handler"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  runtime          = "python3.9"
+}
+
+# 10. Granting S3 permission to call Lambda
+resource "aws_lambda_permission" "allow_s3" {
+  statement_id  = "AllowExecutionFromS3"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.s3_trigger_lambda.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.data_lake.arn
+}
+
+# 11. S3 Event Notification (The actual Trigger)
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = aws_s3_bucket.data_lake.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_trigger_lambda.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "bronze/"
+    filter_suffix       = ".csv"
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3]
 }
